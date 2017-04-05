@@ -16,29 +16,8 @@ from tflearn.data_preprocessing import ImagePreprocessing
 from tflearn.data_augmentation import ImageAugmentation
 import pickle
 import tensorflow
-
-# Load the data set
-
-'''
-X, Y, X_test, Y_test = pickle.load(open("full_dataset.pkl", "rb"))
-
-print(len(X))
-print(len(Y))
-print(X)
-print(Y)
-print(Y[0])
-print(Y[0][0])
-print(len(X[0]))
-print(X[0])
-print(len(X[0][0]))
-print(X[0][0])
-'''
-
-#X_test, Y_test 
-
 import glob
 
-import cv2
 
 X = []
 Y = []
@@ -49,36 +28,57 @@ Y_test = []
 import scipy
 import numpy as np
 
-X, Y, X_test, Y_test = pickle.load(open("full_dataset.pkl", "rb"))
-print("1")
-X = X.tolist()
-print("2")
-X_test = X_test.tolist()
-print("3")
-Y = [[0., 1.] for i in range(len(X))]
-Y_test = [[0., 1.] for i in range(len(X_test))]
-print("4")
 
-dir = "goodData/train/*.jpg"
+dir = "datapruned/human/7070/trainsmall/*.jpg"
 #dir = "people_all/*.jpg"
+height = []
+width = []
 for img in glob.glob(dir):
-    #print(img)
     n = scipy.ndimage.imread(img, mode="RGB")
-    n = scipy.misc.imresize(n, (32, 32), interp="bicubic").astype(np.float32, casting='unsafe')
+
+    #if n.shape[0]>= 300 and n.shape[1]>=300:
+    n = scipy.misc.imresize(n, (320, 320), interp="bicubic").astype(np.float32, casting='unsafe')
 
     X.append(n)
     Y.append([1., 0.])
+#scipy.misc.imsave('gradient2.jpg', X[0])
 
-dir = "goodData/val/*.jpg"
+print("Human Train done")
+dir = "datapruned/nonhuman/train/*.jpeg"
+#dir = "people_all/*.jpg"
+for img in glob.glob(dir):
+    n = scipy.ndimage.imread(img, mode="RGB")
+
+    n = scipy.misc.imresize(n, (320, 320), interp="bicubic").astype(np.float32, casting='unsafe')
+
+    X.append(n)
+    Y.append([0., 1.])
+print("NonHuman Train done")
+
+
+dir = "datapruned/human/7070/valsmall/*.jpg"
 for img in glob.glob(dir):
     #print(img)
     n = scipy.ndimage.imread(img, mode="RGB")
-    n = scipy.misc.imresize(n, (32, 32), interp="bicubic").astype(np.float32, casting='unsafe')
+    n = scipy.misc.imresize(n, (320, 320), interp="bicubic").astype(np.float32, casting='unsafe')
 
     X_test.append(n)
     Y_test.append([1., 0.])
+print("Human Val done")
 
-#scipy.misc.imsave('gradient.jpg', X[0])
+
+dir = "datapruned/nonhuman/val/*.jpeg"
+for img in glob.glob(dir):
+    #print(img)
+    n = scipy.ndimage.imread(img, mode="RGB")
+    n = scipy.misc.imresize(n, (320, 320), interp="bicubic").astype(np.float32, casting='unsafe')
+
+    X_test.append(n)
+    Y_test.append([0., 1.])
+print("NonHuman Val done")
+
+
+
 
 # Shuffle the data
 X, Y = shuffle(X, Y)
@@ -100,24 +100,24 @@ img_aug.add_random_blur(sigma_max=3.)
 # Define our network architecture:
 
 # Input is a 32x32 image with 3 color channels (red, green and blue)
-network = input_data(shape=[None, 32, 32, 3],
+network = input_data(shape=[None, 320, 320, 3],
                      data_preprocessing=img_prep,
                      data_augmentation=img_aug)
 
 # Step 1: Convolution
-network = conv_2d(network, 32, 3, activation='relu')
+network = conv_2d(network, 8, 10, activation='relu')
 
 # Step 2: Max pooling
-network = max_pool_2d(network, 2)
+network = max_pool_2d(network, 8)
 
 # Step 3: Convolution again
-network = conv_2d(network, 64, 3, activation='relu')
+network = conv_2d(network, 8, 10, activation='relu')
 
 # Step 4: Convolution yet again
-network = conv_2d(network, 64, 3, activation='relu')
+network = conv_2d(network, 8, 10, activation='relu')
 
 # Step 5: Max pooling again
-network = max_pool_2d(network, 2)
+network = max_pool_2d(network, 8)
 
 # Step 6: Fully-connected 512 node neural network
 network = fully_connected(network, 512, activation='relu')
@@ -138,9 +138,9 @@ model = tflearn.DNN(network, tensorboard_verbose=0, checkpoint_path='human-class
 
 # Train it! We'll do 100 training passes and monitor it as it goes.
 #model.fit(X, Y)
-model.fit(X, Y, n_epoch=100, shuffle=True, validation_set=(X_test, Y_test),
-          show_metric=True, batch_size=96,
-          snapshot_epoch=True,
+model.fit(X, Y, n_epoch=10, shuffle=True, validation_set=(X_test, Y_test),
+          show_metric=True,
+          snapshot_epoch=False,
           run_id='human-classifier')
 
 # Save model when training is complete to a file
